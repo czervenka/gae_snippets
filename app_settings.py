@@ -1,4 +1,4 @@
-__author__ 'czervenka'
+__author__ = 'czervenka'
 """
 Simple database app settings
 
