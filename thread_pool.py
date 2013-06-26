@@ -1,4 +1,15 @@
+__author__ = 'czervenka'
+"""
+from thread_pool import ThreadPool
 
+def test(n):
+    print 'Running %d' % n'
+
+t = ThreadPool()
+for n in xrange(100):
+    t.add(test, n)
+t.run()
+"""
 import logging
 from threading import Thread
 from time import sleep
