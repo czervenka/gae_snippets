@@ -69,24 +69,29 @@ class ThreadPool(object):
         queue_timeout: how long each thread waits for a new job from empty queue before quits
         """
         self._pool_size = pool_size
-        self._pool = []
-        self._queue = Queue(queue_capacity)
+        self._pool = []  # holds the list of created threads
+        self._queue = Queue(queue_capacity)  # jobs in-queue
         self._queue_capacity = queue_capacity
         self._queue_timeout = queue_timeout
         self._source = None
-        self._queue_out = None
+        self._queue_out = None  # used to forward jobs results to another ThreadPool
         self.set_source(source)
 
     def add(self, callback, *args, **kwargs):
+        """Adds a job to in-queue"""
         self._queue.put((callback, args, kwargs), timeout=self._queue_timeout)
         return self
 
     def wait(self):
+        """Waits for all threads to finish"""
         self._queue.join()
         self.finish()
         return self
 
     def run(self):
+        """
+        Creates thread pool and starts to consume source (if any) or waits `queue_timeout` for jobs added by self.add
+        """
         self.start()
         self._build_pool()
         if self._source is not None:
@@ -96,14 +101,22 @@ class ThreadPool(object):
         return self
 
     def __rshift__(self, other):
+        """
+        Allows chaining of ThreadPool objects using pool_a >> pool_b
+        other: consumer of self
+        """
         return self.forward(other)
 
     def forward(self, other):
+        """see __rshift__"""
         self._queue_out = Queue(self._queue_capacity)
         other.set_source(self._queue_out)
         return self
 
     def set_source(self, source):
+        """
+        Sets source (iterator, ThreadPool subclass or Queue instance)
+        """
         if isinstance(source, Queue):
             self._queue = source
         elif isinstance(source, ThreadPool):
@@ -112,24 +125,30 @@ class ThreadPool(object):
             self._source = source
 
     def jobs_count(self):
+        """Returns total count of jobs waiting and being processed"""
         return len(self._pool) + len(self._queue.qsize())
 
     def finish(self):
+        """Called when self.wait finishes"""
         self._end_time = datetime.now()
         logging.debug('Finished in %s.' % (self._end_time - self._start_time))
 
     def start(self):
+        """Called before any thread is created and started"""
         self._start_time = datetime.now()
         logging.debug('Starting.')
 
     def _build_pool(self):
+        """Creates pool of running worker threads"""
         self._pool = []
         for n in xrange(self._pool_size):
             thread = Thread(target=self._thread_run)
             self._pool.append(thread)
             thread.start()
+        return self
 
     def _consume(self):
+        """Starts consumming source"""
         for job in self._source:
             if not len(job) == 3:
                 raise ValueError("Job must bee tuple (callback, arg_list, kwargs_dict).")
@@ -142,9 +161,14 @@ class ThreadPool(object):
         return self
 
     def _clean_pool(self):
+        """Removes finished threads from the pool."""
         self._pool = filter(lambda t: t.is_alive(), self._pool)
+        return self
 
     def _thread_run(self):
+        """
+        Runs in thread and consumes the incomming jobs.
+        """
         while True:
             try:
                 job = self._queue.get(timeout=self._queue_timeout)
