@@ -58,13 +58,14 @@ from Queue import Queue, Empty, Full
 from time import sleep
 from datetime import datetime
 
+
 class ThreadPool(object):
 
     def __init__(self, pool_size=30, source=None, queue_capacity=100, queue_timeout=0.5):
         """
         pool_size: maximum number of thread workers
         source: iterator, another ThreadPool or Queue or None to use method `add` to feed workers.
-        queue_capacity: how much tasks can be queued using ThreadPool.add before Queue.Full exception is raised
+        queue_capacity: how many tasks can be queued using ThreadPool.add before Queue.Full exception is raised
         queue_timeout: how long each thread waits for a new job from empty queue before quits
         """
         self._pool_size = pool_size
@@ -157,5 +158,3 @@ class ThreadPool(object):
             except Empty:
                 logging.debug('No jobs, quitting.')
                 break
-
-
